@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Falconero · Archivio Recensioni</title>
+<meta name="description" content="L'archivio completo delle recensioni videoludiche di Falconero — voti, rivalutazioni e video, sempre aggiornato dal foglio di calcolo del canale.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦅</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0e1015;
+    --bg-alt: #14171e;
+    --surface: #1a1e27;
+    --surface-hi: #222732;
+    --line: #2a2f3c;
+    --text: #f2ede1;
+    --text-dim: #9099ab;
+    --text-faint: #5c6478;
+
+    --amber: #e2942c;
+    --amber-dim: #7a5a2a;
+    --rust: #c1512e;
+    --sky: #4fb3bf;
+    --sky-dim: #2c5a60;
+
+    --score-hi: #6fbf73;
+    --score-mid: #e2b33c;
+    --score-lo: #d9564a;
+    --score-na: #5c6478;
+
+    --radius: 14px;
+    --font-display: "Bebas Neue", "Arial Narrow", sans-serif;
+    --font-body: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  }
+
+  *{ box-sizing: border-box; }
+  html{ scroll-behavior: smooth; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  a{ color: inherit; }
+
+  /* ---------- background texture ---------- */
+  .noise-veil{
+    position: fixed; inset: 0; pointer-events: none; z-index: 5;
+    opacity: .05; mix-blend-mode: overlay;
+    background-image: repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 3px);
+  }
+
+  /* ---------- header ---------- */
+  header.hero{
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 120% 90% at 20% -10%, rgba(226,148,44,.16), transparent 60%),
+      radial-gradient(ellipse 100% 80% at 100% 0%, rgba(79,179,191,.10), transparent 55%),
+      linear-gradient(180deg, #101319 0%, #0e1015 100%);
+    border-bottom: 1px solid var(--line);
+    padding: 56px 24px 32px;
+  }
+  .hero-inner{ max-width: 1120px; margin: 0 auto; position: relative; z-index: 2; }
+
+  /* Banner reale del canale, se BANNER_URL è impostato in config.
+     Resta sotto ai gradienti sopra e sotto uno scrim scuro per leggibilità. */
+  .banner-layer{
+    position: absolute; inset: 0;
+    background-size: cover;
+    background-position: center 35%;
+    opacity: 0;
+    transition: opacity .3s;
+    z-index: 0;
+  }
+  .banner-layer.visible{ opacity: .34; }
+  .banner-scrim{
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(14,16,21,.55) 0%, rgba(14,16,21,.88) 78%, var(--bg) 100%);
+    z-index: 1;
+  }
+
+  .falcon-mark{
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 420px; height: 420px;
+    opacity: .10;
+    z-index: 1;
+    transform: scaleX(-1);
+    pointer-events: none;
+    transition: opacity .3s;
+  }
+  .falcon-mark.dimmed{ opacity: .045; }
+  @media (max-width: 720px){ .falcon-mark{ width: 280px; height: 280px; top: -10px; right: -60px; } }
+
+  .identity-row{
+    display:flex; align-items:center; gap: 16px;
+    margin-bottom: 18px;
+  }
+  .avatar{
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--amber);
+    box-shadow: 0 0 0 4px rgba(226,148,44,.12), 0 8px 24px rgba(0,0,0,.4);
+    flex: none;
+    display: none; /* mostrato via JS solo se AVATAR_URL è impostato */
+  }
+  .avatar.visible{ display: block; }
+  .channel-name{
+    display:flex; flex-direction:column; gap: 2px;
+  }
+  .channel-name b{
+    font-family: var(--font-mono);
+    font-size: 14px;
+    letter-spacing: .04em;
+    color: var(--text);
+  }
+  .channel-name span{
+    font-size: 11.5px;
+    color: var(--text-faint);
+  }
+
+  .eyebrow{
+    display:flex; align-items:center; gap:10px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 14px;
+  }
+  .eyebrow::before{
+    content:""; width: 22px; height: 1px; background: var(--amber);
+  }
+
+  h1.title{
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(52px, 11vw, 108px);
+    line-height: .88;
+    letter-spacing: .01em;
+    margin: 0;
+    color: var(--text);
+    text-shadow: 0 0 60px rgba(226,148,44,.25);
+  }
+  h1.title span{ color: var(--amber); }
+
+  p.tagline{
+    max-width: 640px;
+    color: var(--text-dim);
+    font-size: 16px;
+    margin: 14px 0 0;
+  }
+
+  .stats-row{
+    display:flex; flex-wrap: wrap; gap: 10px;
+    margin-top: 30px;
+  }
+  .stat-chip{
+    display:flex; flex-direction: column; gap: 2px;
+    background: rgba(255,255,255,.03);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 16px;
+    min-width: 108px;
+  }
+  .stat-chip b{
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .stat-chip span{
+    font-size: 11px;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  .social-row{
+    display:flex; flex-wrap: wrap; gap: 10px;
+    margin-top: 26px;
+  }
+  .social-row a{
+    display:inline-flex; align-items:center; gap:7px;
+    text-decoration:none;
+    font-size: 13px; font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--text-dim);
+    transition: border-color .15s, color .15s, transform .15s;
+  }
+  .social-row a:hover{ border-color: var(--amber); color: var(--text); transform: translateY(-1px); }
+  .social-row a svg{ width: 14px; height: 14px; flex: none; }
+
+  /* ---------- controls ---------- */
+  .controls{
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(14,16,21,.88);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .controls-inner{
+    max-width: 1120px; margin: 0 auto;
+    padding: 14px 24px;
+    display:flex; gap: 12px; flex-wrap: wrap; align-items:center;
+  }
+  .search-wrap{
+    position: relative; flex: 1 1 240px;
+  }
+  .search-wrap svg{
+    position:absolute; left:12px; top:50%; transform: translateY(-50%);
+    width:15px; height:15px; color: var(--text-faint);
+  }
+  #search{
+    width:100%;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    padding: 10px 12px 10px 34px;
+    border-radius: 10px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  #search:focus{ border-color: var(--amber); }
+  #search::placeholder{ color: var(--text-faint); }
+
+  select, .toggle-btn{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    outline: none;
+  }
+  select:hover, .toggle-btn:hover{ color: var(--text); border-color: var(--text-faint); }
+  .toggle-btn.active{ color: #14171e; background: var(--amber); border-color: var(--amber); }
+
+  .count-note{
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-faint);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  /* ---------- grid ---------- */
+  main{ max-width: 1120px; margin: 0 auto; padding: 28px 24px 80px; }
+
+  #status{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap: 14px;
+    padding: 90px 20px;
+    color: var(--text-dim);
+    text-align:center;
+  }
+  .spinner{
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    border: 3px solid var(--line);
+    border-top-color: var(--amber);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+  #status.error{ color: var(--score-lo); }
+  #status .status-detail{
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-faint);
+    max-width: 480px;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+  }
+
+  .card{
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px 18px 16px;
+    display:flex; flex-direction:column; gap: 12px;
+    transition: border-color .15s, transform .15s, background .15s;
+  }
+  .card:hover{
+    border-color: var(--amber-dim);
+    background: var(--surface-hi);
+    transform: translateY(-2px);
+  }
+
+  .card-top{ display:flex; align-items:flex-start; gap: 12px; justify-content: space-between; }
+  .card-name{
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--text);
+    flex: 1;
+  }
+
+  .badge{
+    flex: none;
+    width: 54px; height: 54px;
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 17px;
+    color: #14171e;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  }
+  .badge.na{ color: var(--text-dim); background: var(--surface-hi) !important; border: 1px dashed var(--line); clip-path:none; border-radius: 10px; font-size: 12px; width:54px;height:54px; }
+
+  .score-tag{
+    display:inline-flex; align-items:baseline; gap: 5px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+  .score-tag .old{ text-decoration: line-through; opacity: .7; }
+  .score-tag .new{ color: var(--sky); font-weight: 700; }
+
+  .revalued-pill{
+    display:inline-flex; align-items:center; gap:4px;
+    align-self: flex-start;
+    font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--sky);
+    background: rgba(79,179,191,.10);
+    border: 1px solid var(--sky-dim);
+    padding: 3px 8px;
+    border-radius: 999px;
+  }
+
+  .card-links{
+    display:flex; gap: 8px; flex-wrap: wrap;
+    margin-top: auto;
+  }
+  .card-links a{
+    display:inline-flex; align-items:center; gap:6px;
+    text-decoration:none;
+    font-size: 12px; font-weight: 600;
+    color: var(--text-dim);
+    background: var(--bg-alt);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 7px 10px;
+    transition: color .15s, border-color .15s;
+  }
+  .card-links a:hover{ color: var(--rust); border-color: var(--rust); }
+  .card-links a svg{ width: 12px; height: 12px; flex: none; }
+  .card-links a.updated-link:hover{ color: var(--sky); border-color: var(--sky); }
+
+  .card-footer{
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--text-faint);
+    display:flex; justify-content: space-between; align-items:center;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line);
+  }
+
+  .empty-state{
+    text-align:center; padding: 60px 20px; color: var(--text-faint);
+    font-family: var(--font-mono); font-size: 13px;
+  }
+
+  footer{
+    border-top: 1px solid var(--line);
+    padding: 26px 24px 40px;
+    text-align:center;
+    color: var(--text-faint);
+    font-size: 12px;
+  }
+  footer a{ color: var(--amber); text-decoration:none; }
+
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior:auto; }
+    .spinner{ animation: none; border-top-color: var(--line); }
+  }
+</style>
+</head>
+<body>
+
+<div class="noise-veil"></div>
+
+<header class="hero">
+  <div class="banner-layer" id="bannerLayer"></div>
+  <div class="banner-scrim" id="bannerScrim" style="display:none;"></div>
+  <svg class="falcon-mark" id="falconMark" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path d="M100 20 C70 45, 20 55, 5 60 C40 68, 65 85, 78 105 C55 100, 25 108, 10 130 C42 122, 68 132, 84 150 C88 160, 92 175, 100 190 C108 175, 112 160, 116 150 C132 132, 158 122, 190 130 C175 108, 145 100, 122 105 C135 85, 160 68, 195 60 C180 55, 130 45, 100 20 Z" fill="#e2942c"/>
+  </svg>
+  <div class="hero-inner">
+    <div class="identity-row" id="identityRow" style="display:none;">
+      <img class="avatar" id="avatarImg" alt="Foto profilo di Falconero">
+      <div class="channel-name">
+        <b>@Falconero1987</b>
+        <span>Videogiochi · 100% indipendente</span>
+      </div>
+    </div>
+    <div class="eyebrow">Falconero · Archivio dinamico</div>
+    <h1 class="title">ARCHIVIO<br><span>RECENSIONI</span></h1>
+    <p class="tagline">Ogni gioco recensito sul canale, con voto originale, rivalutazioni nel tempo e link diretto al video.</p>
+
+    <div class="stats-row" id="statsRow">
+      <div class="stat-chip"><b id="statTotal">—</b><span>Giochi</span></div>
+      <div class="stat-chip"><b id="statAvg">—</b><span>Voto medio</span></div>
+      <div class="stat-chip"><b id="statRevalued">—</b><span>Rivalutati</span></div>
+      <div class="stat-chip"><b id="statLast">—</b><span>Ultimo agg.</span></div>
+    </div>
+
+    <div class="social-row">
+      <a href="https://youtube.com/@falconero1987" target="_blank" rel="noopener">▶ YouTube</a>
+      <a href="https://www.twitch.tv/falconero" target="_blank" rel="noopener">🎥 Twitch</a>
+      <a href="https://www.instagram.com/Falconero1987" target="_blank" rel="noopener">📷 Instagram</a>
+      <a href="https://telegram.me/Falconero1987" target="_blank" rel="noopener">✈ Telegram</a>
+    </div>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="controls-inner">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="search" type="text" placeholder="Cerca un gioco…" autocomplete="off">
+    </div>
+    <select id="sortSelect">
+      <option value="score-desc">Voto: dal più alto</option>
+      <option value="score-asc">Voto: dal più basso</option>
+      <option value="az">Ordine alfabetico</option>
+      <option value="recent">Rivalutati di recente</option>
+    </select>
+    <button class="toggle-btn" id="revaluedOnly">Solo rivalutati</button>
+    <span class="count-note" id="countNote"></span>
+  </div>
+</div>
+
+<main>
+  <div id="status">
+    <div class="spinner"></div>
+    <div>Carico l'archivio dal foglio di Falconero…</div>
+  </div>
+  <div class="grid" id="grid" style="display:none;"></div>
+  <div class="empty-state" id="emptyState" style="display:none;">Nessun gioco corrisponde alla ricerca.</div>
+</main>
+
+<footer>
+  Dati sincronizzati in tempo reale dal foglio di calcolo pubblico di Falconero · Created by 
+  <a href="https://github.com/Orion3k" target="_blank" rel="noopener">Orion3k</a>
+</footer>
+
+<script>
+/* =======================================================================
+   CONFIGURAZIONE
+   Cambia solo questi due valori se vuoi puntare a un altro foglio/tab.
+   SHEET_ID: si trova nell'URL del foglio, tra /d/ e /edit
+   SHEET_TAB: indice (1 = primo tab) o nome esatto del tab da leggere
+   ======================================================================= */
+const SHEET_ID  = "1vhRn29hWuNlLiApZYdxPXYzdFqGuNoJtkSigl4f-D-Y";
+const SHEET_TAB = 1;
+
+/* Immagini reali del canale (opzionali).
+   Incolla qui i link diretti presi con "copia indirizzo immagine" da:
+   - AVATAR_URL: la foto profilo del canale
+   - BANNER_URL: il banner del canale (meglio se preso da YouTube Studio > Personalizzazione, risoluzione più alta)
+   Lasciando le stringhe vuote la pagina usa il fallback grafico (falco disegnato). */
+const AVATAR_URL = "https://static-cdn.jtvnw.net/jtv_user_pictures/7e9ada40-bfd4-4313-9258-c20a3946d9f5-profile_image-70x70.png";
+const BANNER_URL = "https://yt3.googleusercontent.com/JB10epbgkgV3Dvv74DTy_4454iHLPl6AYgvSUs8JUn8VWvTIeb2-I_fGhfYj2kuvC4iRE6fpJNI=w1707-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj";
+
+/* Nomi colonne attesi nell'intestazione del foglio (case-insensitive) */
+const COLS = {
+  name:    ["NOME GIOCO"],
+  launch:  ["VOTO AL LANCIO"],
+  updated: ["VOTO AGGIORNATO"],
+  reviewLink: ["RECENSIONE ORIGINALE"],
+  updateLink: ["ANALISI AGGIORNATA"],
+  lastRevision: ["ULTIMA REVISIONE DEL VOTO"]
+};
+
+let ALL_GAMES = [];
+let state = { query: "", sort: "score-desc", revaluedOnly: false };
+
+/* ---------------- fetching + parsing ---------------- */
+
+async function loadData(){
+  // Metodo 1: opensheet.elk.sh — wrapper JSON gratuito pensato per fogli Google pubblici
+  try{
+    const res = await fetch(`https://opensheet.elk.sh/${SHEET_ID}/${SHEET_TAB}`);
+    if(res.ok){
+      const json = await res.json();
+      if(Array.isArray(json) && json.length){
+        return json;
+      }
+    }
+  }catch(e){ /* fallback sotto */ }
+
+  // Metodo 2 (fallback): export CSV diretto del foglio Google
+  const res = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`);
+  if(!res.ok) throw new Error("Impossibile leggere il foglio (" + res.status + ")");
+  const csvText = await res.text();
+  return csvToObjects(csvText);
+}
+
+function csvToObjects(text){
+  const rows = parseCSV(text);
+  if(!rows.length) return [];
+  const headers = rows[0].map(h => h.trim());
+  return rows.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = (row[i] ?? "").trim(); });
+    return obj;
+  });
+}
+
+// Parser CSV minimale, gestisce virgolette e virgole/nuove linee dentro i campi
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = "", inQuotes = false;
+  for(let i = 0; i < text.length; i++){
+    const c = text[i], next = text[i+1];
+    if(inQuotes){
+      if(c === '"' && next === '"'){ field += '"'; i++; }
+      else if(c === '"'){ inQuotes = false; }
+      else field += c;
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === ','){ row.push(field); field = ""; }
+      else if(c === '\n'){ row.push(field); rows.push(row); row = []; field = ""; }
+      else if(c === '\r'){ /* skip */ }
+      else field += c;
+    }
+  }
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  return rows.filter(r => r.some(f => f !== ""));
+}
+
+function pickField(obj, candidates){
+  const keys = Object.keys(obj);
+  for(const cand of candidates){
+    const match = keys.find(k => k.trim().toUpperCase() === cand.toUpperCase());
+    if(match) return (obj[match] ?? "").toString().trim();
+  }
+  return "";
+}
+
+function parseScore(raw){
+  if(!raw) return null;
+  const norm = raw.replace(",", ".").trim().toUpperCase();
+  if(norm === "SV" || norm === "" || norm === "N/D" || norm === "-") return null;
+  const n = parseFloat(norm);
+  return isNaN(n) ? null : n;
+}
+
+function isUrl(str){
+  return /^https?:\/\//i.test((str || "").trim());
+}
+
+/* ---------------- transform raw rows into game objects ---------------- */
+
+function buildGames(rawRows){
+  const games = [];
+  rawRows.forEach(r => {
+    const name = pickField(r, COLS.name);
+    if(!name) return;
+    const launch = parseScore(pickField(r, COLS.launch));
+    const updated = parseScore(pickField(r, COLS.updated));
+    const current = updated !== null ? updated : launch;
+    const reviewLink = pickField(r, COLS.reviewLink);
+    const updateLink = pickField(r, COLS.updateLink);
+    const lastRevision = pickField(r, COLS.lastRevision);
+    games.push({
+      name,
+      launch,
+      updated,
+      current,
+      revalued: updated !== null && launch !== null && updated !== launch,
+      reviewLink: isUrl(reviewLink) ? reviewLink : "",
+      updateLink: isUrl(updateLink) ? updateLink : "",
+      lastRevision
+    });
+  });
+  return games;
+}
+
+/* ---------------- rendering ---------------- */
+
+function scoreClass(score){
+  if(score === null) return "na";
+  if(score >= 8) return "hi";
+  if(score >= 6) return "mid";
+  return "lo";
+}
+const scoreColor = { hi: "var(--score-hi)", mid: "var(--score-mid)", lo: "var(--score-lo)", na: "var(--score-na)" };
+
+function fmtScore(n){
+  if(n === null) return "N/D";
+  return Number.isInteger(n) ? n.toFixed(1) : String(n);
+}
+
+function cardHTML(g){
+  const cls = scoreClass(g.current);
+  const badge = g.current === null
+    ? `<div class="badge na">N/D</div>`
+    : `<div class="badge" style="background:${scoreColor[cls]}">${fmtScore(g.current)}</div>`;
+
+  const scoreTag = g.revalued
+    ? `<span class="score-tag"><span class="old">${fmtScore(g.launch)}</span> → <span class="new">${fmtScore(g.updated)}</span></span>`
+    : (g.current !== null ? `<span class="score-tag">voto al lancio</span>` : "");
+
+  const links = [];
+  if(g.reviewLink) links.push(`<a href="${g.reviewLink}" target="_blank" rel="noopener">${ytIcon()} Recensione</a>`);
+  if(g.updateLink) links.push(`<a class="updated-link" href="${g.updateLink}" target="_blank" rel="noopener">${ytIcon()} Rivalutazione</a>`);
+
+  return `
+    <article class="card">
+      <div class="card-top">
+        <div class="card-name">${escapeHTML(g.name)}</div>
+        ${badge}
+      </div>
+      ${g.revalued ? `<span class="revalued-pill">↻ Rivalutato</span>` : ""}
+      ${scoreTag}
+      <div class="card-links">${links.join("") || `<span style="font-size:11px;color:var(--text-faint)">Nessun video collegato</span>`}</div>
+      <div class="card-footer">
+        <span>${g.lastRevision ? "Agg. " + escapeHTML(g.lastRevision) : ""}</span>
+      </div>
+    </article>`;
+}
+
+function ytIcon(){
+  return `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23 12s0-3.6-.46-5.3a2.9 2.9 0 0 0-2-2C18.9 4.2 12 4.2 12 4.2s-6.9 0-8.54.5a2.9 2.9 0 0 0-2 2C1 8.4 1 12 1 12s0 3.6.46 5.3a2.9 2.9 0 0 0 2 2c1.64.5 8.54.5 8.54.5s6.9 0 8.54-.5a2.9 2.9 0 0 0 2-2C23 15.6 23 12 23 12ZM9.7 15.5v-7l6.1 3.5Z"/></svg>`;
+}
+
+function escapeHTML(s){
+  return (s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function render(){
+  const grid = document.getElementById("grid");
+  const empty = document.getElementById("emptyState");
+  const countNote = document.getElementById("countNote");
+
+  let list = ALL_GAMES.filter(g => g.name.toLowerCase().includes(state.query.toLowerCase()));
+  if(state.revaluedOnly) list = list.filter(g => g.revalued);
+
+  list = [...list].sort((a, b) => {
+    if(state.sort === "az") return a.name.localeCompare(b.name, "it");
+    if(state.sort === "score-asc") return (a.current ?? -1) - (b.current ?? -1);
+    if(state.sort === "recent") return (b.revalued === a.revalued) ? 0 : (b.revalued ? 1 : -1);
+    return (b.current ?? -1) - (a.current ?? -1); // score-desc default
+  });
+
+  countNote.textContent = `${list.length} / ${ALL_GAMES.length} giochi`;
+
+  if(!list.length){
+    grid.style.display = "none";
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+  grid.style.display = "grid";
+  grid.innerHTML = list.map(cardHTML).join("");
+}
+
+function renderStats(){
+  const rated = ALL_GAMES.filter(g => g.current !== null);
+  const avg = rated.length ? (rated.reduce((s, g) => s + g.current, 0) / rated.length) : 0;
+  const revaluedCount = ALL_GAMES.filter(g => g.revalued).length;
+  const lastDates = ALL_GAMES.map(g => g.lastRevision).filter(Boolean);
+
+  document.getElementById("statTotal").textContent = ALL_GAMES.length;
+  document.getElementById("statAvg").textContent = avg ? avg.toFixed(1) : "—";
+  document.getElementById("statRevalued").textContent = revaluedCount;
+  document.getElementById("statLast").textContent = lastDates.length ? lastDates[lastDates.length - 1] : "—";
+}
+
+/* ---------------- branding reale (avatar + banner) ---------------- */
+
+function applyBranding(){
+  if(BANNER_URL){
+    const layer = document.getElementById("bannerLayer");
+    layer.style.backgroundImage = `url("${BANNER_URL}")`;
+    layer.classList.add("visible");
+    document.getElementById("bannerScrim").style.display = "block";
+    document.getElementById("falconMark").classList.add("dimmed");
+  }
+  if(AVATAR_URL){
+    const img = document.getElementById("avatarImg");
+    img.src = AVATAR_URL;
+    img.classList.add("visible");
+    document.getElementById("identityRow").style.display = "flex";
+  }
+}
+
+/* ---------------- wiring ---------------- */
+
+document.getElementById("search").addEventListener("input", e => { state.query = e.target.value; render(); });
+document.getElementById("sortSelect").addEventListener("change", e => { state.sort = e.target.value; render(); });
+document.getElementById("revaluedOnly").addEventListener("click", e => {
+  state.revaluedOnly = !state.revaluedOnly;
+  e.target.classList.toggle("active", state.revaluedOnly);
+  render();
+});
+
+async function init(){
+  applyBranding();
+  const status = document.getElementById("status");
+  try{
+    const rawRows = await loadData();
+    ALL_GAMES = buildGames(rawRows);
+    if(!ALL_GAMES.length) throw new Error("Il foglio è stato letto ma non contiene righe valide.");
+    status.style.display = "none";
+    renderStats();
+    render();
+  }catch(err){
+    status.classList.add("error");
+    status.innerHTML = `
+      <div style="font-size:28px;">⚠</div>
+      <div>Non riesco a caricare l'archivio dal foglio di calcolo.</div>
+      <div class="status-detail">
+        Controlla che il foglio Google sia condiviso come "Chiunque abbia il link → Visualizzatore"
+        (File → Condividi). Dettaglio errore: ${escapeHTML(err.message || String(err))}
+      </div>`;
+    console.error(err);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
